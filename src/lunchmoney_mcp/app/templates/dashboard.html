@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#252525" />
+    <title>Dashboard · Lunch Money</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('dashboard_static', path='/vendor/pico/pico.min.css') }}"
+    />
+    <link
+        rel="stylesheet"
+        href="{{ url_for('dashboard_static', path='/dashboard.css') }}"
+    />
+    <script
+        defer
+        src="{{ url_for('dashboard_static', path='/vendor/htmx/htmx.min.js') }}"
+    ></script>
+    <script
+        defer
+        src="{{ url_for('dashboard_static', path='/dashboard.js') }}"
+    ></script>
+    <script
+        defer
+        src="{{ url_for('dashboard_static', path='/vendor/frappe/frappe-charts.min.js') }}"
+    ></script>
+    <script
+        defer
+        src="{{ url_for('dashboard_static', path='/vendor/alpine/alpine.min.js') }}"
+    ></script>
+</head>
+<body x-data="dashboard" @keydown.window="onKeydown">
+    <a class="skip-link" href="#dashboard-content">Skip to dashboard content</a>
+
+    <div class="cockpit">
+        <header class="cockpit-header">
+            <a class="brand" href="/">
+                <img
+                    class="brand-mascot"
+                    src="{{ url_for('dashboard_static', path='/mascot.png') }}"
+                    alt=""
+                />
+                <span>Lunch Money</span>
+            </a>
+            {% include "partials/_period_control.html" %}
+            <div class="header-status">
+                <span class="live-dot" aria-hidden="true"></span>
+                {% if dashboard.transaction_last_synced_at %}
+                <time datetime="{{ dashboard.transaction_last_synced_at.isoformat() }}">Data synced</time>
+                {% else %}
+                <span>Awaiting sync</span>
+                {% endif %}
+            </div>
+        </header>
+
+        <main id="dashboard-content" class="cockpit-layout" tabindex="-1">
+            {% include "partials/cockpit_content.html" %}
+        </main>
+    </div>
+
+    <dialog id="api-key-dialog" x-show="showApiKeyDialog" @click.outside="showApiKeyDialog = false">
+        <article>
+            <header>
+                <p><strong>API Key Required</strong></p>
+            </header>
+            <p>Enter your Lunch Money API key to access the dashboard.</p>
+            <form @submit.prevent="submitApiKey()">
+                <input
+                    type="password"
+                    x-model="apiKeyInput"
+                    placeholder="Paste your API key…"
+                    autocomplete="off"
+                />
+                <footer>
+                    <button type="submit">Connect</button>
+                </footer>
+            </form>
+        </article>
+    </dialog>
+
+    <div class="toast-container" x-data x-show="$store.toasts?.length" x-transition>
+        <template x-for="toast in $store.toasts" :key="toast.id">
+            <div class="toast" :class="'toast--' + toast.type">
+                <span x-text="toast.message"></span>
+                <button @click="$store.dismissToast(toast.id)" aria-label="Dismiss">&times;</button>
+            </div>
+        </template>
+    </div>
+</body>
+</html>

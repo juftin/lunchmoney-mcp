@@ -96,7 +96,7 @@ async def verify_api_key(
     Response
         The downstream response, or a 401 response for missing or invalid keys.
     """
-    if request.url.path.startswith("/mcp") or request.url.path in {
+    if request.url.path.startswith(("/mcp", "/static/")) or request.url.path in {
         "/health",
         "/healthz",
         "/ready",

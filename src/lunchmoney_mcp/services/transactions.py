@@ -54,7 +54,11 @@ async def _store_transactions(
 
 
 async def fetch_recent_transactions(
-    db: LunchMoneyDatabase, days: int = 30, limit: int = 50
+    db: LunchMoneyDatabase,
+    days: int = 30,
+    limit: int = 50,
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
 ) -> list[TransactionInfo]:
     """Fetch recent transactions from local database within specified date window.
 
@@ -63,20 +67,29 @@ async def fetch_recent_transactions(
     db : LunchMoneyDatabase
         Database manager instance.
     days : int
-        Number of days back from today to include. Default is 30.
+        Number of days back from the resolved end date to include when
+        ``start_date`` is omitted. Default is 30.
     limit : int
         Maximum number of transactions to return. Default is 50.
+    start_date : datetime.date | None
+        Optional inclusive start date for a fixed reporting period.
+    end_date : datetime.date | None
+        Optional inclusive end date for a fixed reporting period. Defaults to today.
 
     Returns
     -------
     list[TransactionInfo]
         Filtered list of matching transaction objects ordered by date descending.
     """
-    cutoff = datetime.date.today() - datetime.timedelta(days=days)
+    resolved_end = end_date or datetime.date.today()
+    cutoff = start_date or resolved_end - datetime.timedelta(days=days)
     async with db.session() as session:
         statement: SelectOfScalar[Transaction] = (
             select(Transaction)
-            .where(Transaction.var_date >= cutoff)
+            .where(
+                Transaction.var_date >= cutoff,
+                Transaction.var_date <= resolved_end,
+            )
             .order_by(col(Transaction.var_date).desc())
             .limit(limit)
         )

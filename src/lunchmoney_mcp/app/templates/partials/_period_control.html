@@ -1,0 +1,31 @@
+<div id="period-control" {% if is_hx_request %}hx-swap-oob="true"{% endif %} class="period-control" aria-label="Reporting period">
+    <button
+        class="period-control__button"
+        type="button"
+        aria-label="Previous month"
+        hx-get="/?period={{ dashboard.previous_period_start.isoformat() }}"
+        hx-target="#spending-workspace"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+    >
+        <span aria-hidden="true">‹</span>
+    </button>
+    <span class="period-control__label">
+        {{ dashboard.period_start.strftime('%b %d, %Y') }} — {{ dashboard.period_end.strftime('%b %d, %Y') }}
+    </span>
+    {% if dashboard.next_period_start %}
+    <button
+        class="period-control__button"
+        type="button"
+        aria-label="Next month"
+        hx-get="/?period={{ dashboard.next_period_start.isoformat() }}"
+        hx-target="#spending-workspace"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+    >
+        <span aria-hidden="true">›</span>
+    </button>
+    {% else %}
+    <span class="period-control__button is-disabled" aria-hidden="true">›</span>
+    {% endif %}
+</div>

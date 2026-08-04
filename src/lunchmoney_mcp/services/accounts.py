@@ -22,6 +22,7 @@ def _manual_account_info(account: ManualAccount) -> AccountInfo:
     return AccountInfo(
         id=account.id,
         name=account.name,
+        display_name=account.display_name,
         balance=float(account.balance),
         currency=account.currency,
         type_or_status=account.type,
@@ -49,10 +50,11 @@ async def fetch_accounts(db: LunchMoneyDatabase) -> AccountsSummary:
             AccountInfo(
                 id=a.id,
                 name=a.name,
+                display_name=a.display_name,
                 institution_name=a.institution_name,
                 balance=float(a.balance),
                 currency=a.currency,
-                type_or_status=a.status,
+                type_or_status=a.type,
             )
             for a in plaid_accs
         ],
@@ -108,9 +110,10 @@ async def fetch_plaid_account_by_id(
     return AccountInfo(
         id=account.id,
         name=account.name,
+        display_name=account.display_name,
         balance=float(account.balance),
         currency=account.currency,
-        type_or_status=account.status,
+        type_or_status=account.type,
         institution_name=account.institution_name,
     )
 

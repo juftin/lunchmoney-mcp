@@ -1,0 +1,176 @@
+{% from "partials/_macros.html" import amount, currency_symbol, category_row with context -%}
+{% if is_hx_request %}{% include "partials/_period_control.html" %}{% endif %}
+{%- set spending = dashboard.category_spending -%}
+{%- set accounts = dashboard.accounts -%}
+{%- set all_accounts = accounts.plaid_accounts + accounts.manual_accounts if accounts else [] -%}
+{%- set visible_accounts = all_accounts | selectattr('balance') | list -%}
+{%- set account_total = namespace(value=0) -%}
+{%- for account in all_accounts -%}
+{%- if account.type_or_status in ['credit', 'loan'] -%}
+{%- set account_total.value = account_total.value - (account.balance | abs) -%}
+{%- else -%}
+{%- set account_total.value = account_total.value + account.balance -%}
+{%- endif -%}
+{%- endfor -%}
+{%- set net_income = spending.total_income - spending.total_spending if spending else 0 -%}
+{%- set savings_rate = ((net_income / spending.total_income) * 100) if spending and spending.total_income else none -%}
+{% if dashboard.unavailable_sections %}
+<section class="dashboard-alert" role="status" aria-labelledby="availability-title">
+    <strong id="availability-title">Partial data</strong>
+    <span>{{ dashboard.unavailable_sections | join(', ') }} will return on the next refresh.</span>
+</section>
+{% endif %}
+
+<aside class="left-rail" aria-label="Financial overview">
+    <div class="panel-switcher" role="tablist" aria-label="Overview panel">
+        <button class="panel-switcher__button" type="button" role="tab"
+                :class="{ 'is-active': activeTab === 'accounts' }"
+                :aria-selected="activeTab === 'accounts' ? 'true' : 'false'"
+                aria-controls="accounts-panel" id="accounts-tab"
+                @click="setTab('accounts')">
+            Accounts
+        </button>
+        <button class="panel-switcher__button" type="button" role="tab"
+                :class="{ 'is-active': activeTab === 'summary' }"
+                :aria-selected="activeTab === 'summary' ? 'true' : 'false'"
+                aria-controls="summary-panel" id="summary-tab"
+                @click="setTab('summary')">
+            Period
+        </button>
+        <button class="panel-switcher__button" type="button" role="tab"
+                :class="{ 'is-active': activeTab === 'activity' }"
+                :aria-selected="activeTab === 'activity' ? 'true' : 'false'"
+                aria-controls="activity-panel" id="activity-tab"
+                @click="setTab('activity')">
+            Activity
+        </button>
+    </div>
+
+    <section class="rail-panel" id="accounts-panel" role="tabpanel" aria-labelledby="accounts-tab" x-show="activeTab === 'accounts'">
+        <div class="panel-title">
+            <h2>Accounts overview</h2>
+            <span>{{ visible_accounts | length }}</span>
+        </div>
+        {% if visible_accounts %}
+        {% set cash_types = ['cash', 'depository', 'checking', 'savings', 'prepaid', 'paypal'] %}
+        {% set invest_types = ['investment', 'brokerage', 'crypto', '401k', 'ira', 'roth_ira', 'pension'] %}
+        {% set credit_types = ['credit', 'credit_card', 'loan', 'mortgage', 'student_loan', 'auto_loan'] %}
+        {% set cash_accs = visible_accounts | selectattr('type_or_status', 'in', cash_types) | sort(attribute='balance', reverse=true) | list %}
+        {% set invest_accs = visible_accounts | selectattr('type_or_status', 'in', invest_types) | sort(attribute='balance', reverse=true) | list %}
+        {% set credit_accs = visible_accounts | selectattr('type_or_status', 'in', credit_types) | sort(attribute='balance', reverse=true) | list %}
+        {% set known_types = cash_types + invest_types + credit_types %}
+        {% set other_accs = visible_accounts | rejectattr('type_or_status', 'in', known_types) | sort(attribute='balance', reverse=true) | list %}
+        {% set account_groups = [
+            ('Cash', cash_accs),
+            ('Investment', invest_accs),
+            ('Credit', credit_accs),
+            ('Other', other_accs)] %}
+        <div class="account-tree">
+            {% for group_name, grouped_accounts in account_groups %}
+            {% if grouped_accounts %}
+            {% set group_total = grouped_accounts | map(attribute='balance') | sum %}
+            <details class="account-group" open>
+                <summary>
+                    <span>{{ group_name }} ({{ grouped_accounts | length }})</span>
+                    <strong>{{ amount(group_total, grouped_accounts[0].currency) }}</strong>
+                </summary>
+                <ul>
+                    {% for account in grouped_accounts %}
+                    <li>
+                        <span class="account-name">{{ account.display_name or account.name }}</span>
+                        <strong>{{ amount(account.balance, account.currency) }}</strong>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </details>
+            {% endif %}
+            {% endfor %}
+        </div>
+        <div class="net-worth">
+            <span class="net-worth__label">Net Worth</span>
+            <strong>{{ amount(account_total.value, all_accounts[0].currency) }}</strong>
+        </div>
+        {% else %}
+        <div class="empty-state empty-state--rail">
+            <p>No cached accounts yet.</p>
+            <span>Run a sync to see account balances.</span>
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="rail-panel" id="summary-panel" role="tabpanel" aria-labelledby="summary-tab" x-show="activeTab === 'summary'" style="display: none;">
+        <div class="panel-title">
+            <h2>Period summary</h2>
+            <span>Live</span>
+        </div>
+        {% if spending %}
+        <dl class="period-summary">
+            <div class="period-summary__section">
+                <dt>Income</dt>
+                <dd></dd>
+            </div>
+            <div>
+                <dt>Total income</dt>
+                <dd class="positive">{{ amount(spending.total_income) }}</dd>
+            </div>
+            <div class="period-summary__section">
+                <dt>Expenses</dt>
+                <dd></dd>
+            </div>
+            <div>
+                <dt>Total expenses</dt>
+                <dd>{{ amount(spending.total_spending) }}</dd>
+            </div>
+            <div>
+                <dt>Net income</dt>
+                <dd class="{% if net_income >= 0 %}positive{% else %}negative{% endif %}">
+                    {{ amount(net_income) }}
+                </dd>
+            </div>
+            <div>
+                <dt>Savings rate</dt>
+                <dd class="positive">
+                    {% if savings_rate is not none %}{{ "%.1f" | format(savings_rate) }}%{% else %}—{% endif %}
+                </dd>
+            </div>
+        </dl>
+        {% else %}
+        <div class="empty-state empty-state--rail">
+            <p>Period data is unavailable.</p>
+            <span>Sync transactions to calculate your flow.</span>
+        </div>
+        {% endif %}
+        <div class="budget-status">
+            <span>Budget</span>
+            {% if dashboard.budget_summary %}<strong>{% if dashboard.budget_summary.aligned %}Aligned{% else %}In progress{% endif %}</strong>
+            {% else %}<strong>Unavailable</strong>{% endif %}
+        </div>
+    </section>
+
+    <section class="rail-panel" id="activity-panel" role="tabpanel" aria-labelledby="activity-tab" x-show="activeTab === 'activity'" style="display: none;">
+        <div class="panel-title">
+            <h2>Recent activity</h2>
+            <span>{{ dashboard.transactions | length if dashboard.transactions else 0 }}</span>
+        </div>
+        {% if dashboard.transactions %}
+        <ul class="activity-list">
+            {% for transaction in dashboard.transactions %}
+            <li>
+                <span><strong>{{ transaction.payee }}</strong><small>{{ transaction.date.strftime('%b %d') }}</small></span>
+                <b class="{% if transaction.amount >= 0 %}positive{% else %}negative{% endif %}">{{ amount(transaction.amount) }}</b>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state empty-state--rail">
+            <p>Your ledger is quiet.</p>
+            <span>Recent activity will appear after a sync.</span>
+        </div>
+        {% endif %}
+        <div class="sync-status">
+            <span>Last scheduled sync</span><strong>{% if dashboard.scheduled_sync %}{{ dashboard.scheduled_sync.status | capitalize }}{% else %}Not yet run{% endif %}</strong>
+        </div>
+    </section>
+</aside>
+
+{% include "partials/_spending_workspace.html" %}

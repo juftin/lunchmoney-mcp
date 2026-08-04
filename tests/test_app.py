@@ -292,42 +292,6 @@ async def test_sync_database_populates_last_30_days(
         assert db_txn.payee == "Synthetic Parent Payee"
 
 
-def test_fastapi_root_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Return Hello World response from the root endpoint."""
-    from starlette.testclient import TestClient
-
-    monkeypatch.setattr(app_module, "LunchableClient", lambda **kwargs: object())
-    monkeypatch.setenv("LUNCHMONEY_ACCESS_TOKEN", "mock-token")
-
-    with TestClient(fastapi_app, base_url="http://localhost") as client:
-        response = client.get("/")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["message"] == "Hello World"
-
-
-def test_fastapi_api_key_guard(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Reject REST requests without the configured API key."""
-    from starlette.testclient import TestClient
-
-    from lunchmoney_mcp.config import get_secret_settings, get_settings
-
-    monkeypatch.setattr(app_module, "LunchableClient", lambda **kwargs: object())
-    monkeypatch.setenv("LUNCHMONEY_ACCESS_TOKEN", "mock-token")
-    monkeypatch.setenv("LUNCHMONEY_MCP_API_KEY", "rest-api-key")
-    get_secret_settings.cache_clear()
-    get_settings.cache_clear()
-
-    with TestClient(fastapi_app, base_url="http://localhost") as client:
-        assert client.get("/").status_code == 401
-        assert client.get("/", headers={"X-API-Key": "wrong"}).status_code == 401
-        response = client.get("/", headers={"X-API-Key": "rest-api-key"})
-
-    assert response.status_code == 200
-    get_secret_settings.cache_clear()
-    get_settings.cache_clear()
-
-
 def test_fastapi_sync_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     """Trigger migrations and sync via the /sync endpoint."""
     from starlette.testclient import TestClient

@@ -22,7 +22,8 @@ dependencies = [
   "gunicorn>=23.0.0,<24",
   "uvicorn-worker>=0.4.0,<1",
   "apscheduler==3.11.2",
-  "typing-extensions>=4.12.2"
+  "typing-extensions>=4.12.2",
+  "jinja2>=3.1.6,<4"
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -90,6 +91,19 @@ warn_unused_ignores = true
 module = "lunchmoney.models"
 no_implicit_reexport = false
 
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["lunchmoney_mcp"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports
+"tests/**/*" = ["PLR2004", "S101", "TID252"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
 [dependency-groups]
 dev = [
   "marimo>=0.23.16",
@@ -113,19 +127,6 @@ docs = [
   "mkdocstrings[python]~=0.30.0",
   "pymdown-extensions>=11,<12"
 ]
-
-[tool.ruff.lint.flake8-tidy-imports]
-ban-relative-imports = "all"
-
-[tool.ruff.lint.isort]
-known-first-party = ["lunchmoney_mcp"]
-
-[tool.ruff.lint.per-file-ignores]
-# Tests can use magic values, assertions, and relative imports
-"tests/**/*" = ["PLR2004", "S101", "TID252"]
-
-[tool.ruff.lint.pydocstyle]
-convention = "numpy"
 
 [build-system]
 requires = ["hatchling"]

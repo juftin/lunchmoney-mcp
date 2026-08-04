@@ -21,6 +21,7 @@ from lunchmoney_mcp.services.categories import (
     fetch_category_by_id,
     update_category,
 )
+from lunchmoney_mcp.services.dashboard import fetch_dashboard_data
 from lunchmoney_mcp.services.recurring import (
     fetch_recurring_item_by_id,
     fetch_recurring_items,
@@ -73,6 +74,7 @@ __all__ = [
     "fetch_categories",
     "fetch_category_by_id",
     "fetch_category_spending",
+    "fetch_dashboard_data",
     "fetch_spending_trends",
     "fetch_manual_account_by_id",
     "fetch_plaid_account_by_id",

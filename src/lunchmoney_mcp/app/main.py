@@ -4,9 +4,11 @@ import logging
 import time
 import uuid
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastmcp.server.http import StarletteWithLifespan
 from fastmcp.utilities.lifespan import combine_lifespans
 
@@ -17,6 +19,7 @@ from lunchmoney_mcp.app.routers import (
     accounts_router,
     budgets_router,
     categories_router,
+    dashboard_router,
     health_router,
     recurring_router,
     spending_router,
@@ -30,7 +33,6 @@ from lunchmoney_mcp.logging_config import apply_logging_config
 from lunchmoney_mcp.mcp import mcp
 from lunchmoney_mcp.config import get_settings
 from lunchmoney_mcp.observability import log_event, metrics
-from lunchmoney_mcp.schemas import RootResponse
 
 apply_logging_config()
 
@@ -43,6 +45,11 @@ fastapi_app = FastAPI(
 )
 
 fastapi_app.middleware("http")(verify_api_key)
+fastapi_app.mount(
+    "/static",
+    StaticFiles(directory=Path(__file__).parent / "static"),
+    name="dashboard_static",
+)
 
 
 async def observe_request(
@@ -103,29 +110,13 @@ def _record_request(
 fastapi_app.middleware("http")(observe_request)
 
 
-@fastapi_app.get(
-    path="/",
-    response_model=RootResponse,
-    tags=["Health"],
-    operation_id="get_root",
-)
-async def root() -> RootResponse:
-    """Root endpoint returning status message.
-
-    Returns
-    -------
-    RootResponse
-        Health status message object.
-    """
-    return RootResponse(message="Hello World")
-
-
 fastapi_app.include_router(sync_router)
 fastapi_app.include_router(health_router)
 fastapi_app.include_router(user_router)
 fastapi_app.include_router(summary_router)
 fastapi_app.include_router(budgets_router)
 fastapi_app.include_router(categories_router)
+fastapi_app.include_router(dashboard_router)
 fastapi_app.include_router(accounts_router)
 fastapi_app.include_router(transactions_router)
 fastapi_app.include_router(tags_router)
