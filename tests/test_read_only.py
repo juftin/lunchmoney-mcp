@@ -20,7 +20,7 @@ from database.factories import (
     transaction_object,
 )
 from lunchmoney_mcp.app.main import fastapi_app
-from lunchmoney_mcp.client import LunchMoneyApp
+from lunchmoney_mcp.client import LunchableData, LunchMoneyApp
 from lunchmoney_mcp.database import LunchMoneyDatabase
 from lunchmoney_mcp.database.models import (
     Category,
@@ -86,9 +86,10 @@ async def test_live_summary_service_forwards_query_options() -> None:
     client = cast(
         LunchMoneyApp,
         SimpleNamespace(
+            data=LunchableData(),
             client=SimpleNamespace(
                 summary=SimpleNamespace(get_budget_summary=get_budget_summary)
-            )
+            ),
         ),
     )
 
@@ -101,6 +102,7 @@ async def test_live_summary_service_forwards_query_options() -> None:
         include_past_budget_dates=True,
         include_totals=True,
         include_rollover_pool=True,
+        force_refresh=True,
     )
 
     assert result == summary

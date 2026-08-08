@@ -71,7 +71,9 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.mcp_oauth_audience is None
     assert settings.stateless is False
     assert settings.sync_safety_margin_minutes == 5
-    assert settings.schedule_cron == "0 * * * *"
+    assert settings.schedule_transactions_cron is None
+    assert settings.schedule_metadata_cron is None
+    assert settings.schedule_cron is None
     assert settings.schedule_timezone == "UTC"
     assert settings.schedule_days == 30
     assert settings.embed_scheduler is False

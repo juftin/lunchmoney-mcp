@@ -63,6 +63,7 @@ async def sync_database(
     SyncSummary
         Counts of records persisted across categories, accounts, tags, user, and transactions.
     """
+    client.data.clear()
     sync_started_at = datetime.datetime.now(datetime.timezone.utc)
     resolved_end_date: datetime.date = end_date or datetime.date.today()
     resolved_start_date = (
@@ -81,6 +82,45 @@ async def sync_database(
         model=CategoryObject
     )
     tag_objs: dict[int, TagObject] = await client.refresh(model=TagObject)
+    try:
+        budget_settings_obj = await client.client.budgets.get_budget_settings()
+        client.data.budget_settings = budget_settings_obj
+        await db.upsert_sync_metadata(
+            SyncMetadata(
+                domain="budget_settings",
+                last_synced_at=sync_started_at,
+                payload=budget_settings_obj.model_dump(mode="json"),
+            )
+        )
+    except Exception:
+        pass
+
+    try:
+        summary_obj = await client.client.summary.get_budget_summary(
+            start_date=resolved_start_date,
+            end_date=resolved_end_date,
+            include_totals=True,
+        )
+        cache_key = (
+            resolved_start_date,
+            resolved_end_date,
+            None,
+            None,
+            None,
+            True,
+            None,
+        )
+        client.data.summaries[cache_key] = summary_obj
+        await db.upsert_sync_metadata(
+            SyncMetadata(
+                domain="summary",
+                last_synced_at=sync_started_at,
+                payload=summary_obj.model_dump(mode="json"),
+            )
+        )
+    except Exception:
+        pass
+
     transaction_watermark = (
         await db.get_sync_metadata("transactions") if incremental else None
     )
@@ -118,13 +158,18 @@ async def sync_database(
         records.append(Transaction.from_api(model=txn))
 
     await db.upsert_many(records)
-    if incremental:
-        await db.upsert_sync_metadata(
-            SyncMetadata(
-                domain="transactions",
-                last_synced_at=sync_started_at,
-            )
+    await db.upsert_sync_metadata(
+        SyncMetadata(
+            domain="metadata",
+            last_synced_at=sync_started_at,
         )
+    )
+    await db.upsert_sync_metadata(
+        SyncMetadata(
+            domain="transactions",
+            last_synced_at=sync_started_at,
+        )
+    )
 
     return SyncSummary(
         user=1 if user_obj else 0,

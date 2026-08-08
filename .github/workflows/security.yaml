@@ -3,72 +3,72 @@
 name: security
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
+    pull_request:
+    push:
+        branches:
+            - main
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  security:
-    name: security
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v9.0.0
-        with:
-          enable-cache: true
-      - name: Set up Task
-        uses: go-task/setup-task@v2
-      - name: Audit Python dependencies
-        run: task security
-      - name: Scan secrets and infrastructure configuration
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: secret,misconfig
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-      - name: Build production image for vulnerability scanning
-        run: docker build --tag lunchmoney-mcp:ci .
-      - name: Scan production image
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: lunchmoney-mcp:ci
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
+    security:
+        name: security
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v7
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v9.0.0
+              with:
+                  enable-cache: true
+            - name: Set up Task
+              uses: go-task/setup-task@v2
+            - name: Audit Python dependencies
+              run: task security
+            - name: Scan secrets and infrastructure configuration
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  scan-type: fs
+                  scan-ref: .
+                  scanners: secret,misconfig
+                  severity: HIGH,CRITICAL
+                  ignore-unfixed: true
+                  exit-code: "1"
+            - name: Build production image for vulnerability scanning
+              run: docker build --tag lunchmoney-mcp:ci .
+            - name: Scan production image
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  image-ref: lunchmoney-mcp:ci
+                  format: table
+                  severity: HIGH,CRITICAL
+                  ignore-unfixed: true
+                  exit-code: "1"
 
-  production-smoke:
-    name: production-smoke
-    runs-on: ubuntu-latest
-    needs: security
-    env:
-      LUNCHMONEY_ACCESS_TOKEN: test-access-token
-      LUNCHMONEY_MCP_API_KEY: test-api-key
-      POSTGRES_USER: lunchmoney_ci
-      POSTGRES_PASSWORD: lunchmoney_ci_password
-      POSTGRES_DB: lunchmoney
-      LUNCHMONEY_DATABASE_URL: postgresql+asyncpg://lunchmoney_ci:lunchmoney_ci_password@postgres:5432/lunchmoney
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-      - name: Start the production Compose topology
-        run: docker compose up --build --detach --wait
-      - name: Verify liveness and database readiness
-        run: |
-          curl --fail --retry 10 --retry-connrefused --retry-delay 2 --header "X-API-Key: ${LUNCHMONEY_MCP_API_KEY}" http://127.0.0.1:8000/health
-          curl --fail --retry 10 --retry-connrefused --retry-delay 2 --header "X-API-Key: ${LUNCHMONEY_MCP_API_KEY}" http://127.0.0.1:8000/ready
-      - name: Collect Compose logs on failure
-        if: failure()
-        run: docker compose logs --no-color
-      - name: Stop the production Compose topology
-        if: always()
-        run: docker compose down --volumes
+    production-smoke:
+        name: production-smoke
+        runs-on: ubuntu-latest
+        needs: security
+        env:
+            LUNCHMONEY_ACCESS_TOKEN: test-access-token
+            LUNCHMONEY_MCP_API_KEY: test-api-key
+            POSTGRES_USER: lunchmoney_ci
+            POSTGRES_PASSWORD: lunchmoney_ci_password
+            POSTGRES_DB: lunchmoney
+            LUNCHMONEY_DATABASE_URL: postgresql+asyncpg://lunchmoney_ci:lunchmoney_ci_password@postgres:5432/lunchmoney
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v7
+            - name: Start the production Compose topology
+              run: docker compose up --build --detach --wait
+            - name: Verify liveness and database readiness
+              run: |
+                  curl --fail --retry 10 --retry-connrefused --retry-delay 2 --header "X-API-Key: ${LUNCHMONEY_MCP_API_KEY}" http://127.0.0.1:8000/health
+                  curl --fail --retry 10 --retry-connrefused --retry-delay 2 --header "X-API-Key: ${LUNCHMONEY_MCP_API_KEY}" http://127.0.0.1:8000/ready
+            - name: Collect Compose logs on failure
+              if: failure()
+              run: docker compose logs --no-color
+            - name: Stop the production Compose topology
+              if: always()
+              run: docker compose down --volumes

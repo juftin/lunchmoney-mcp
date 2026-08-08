@@ -1,0 +1,110 @@
+{% if is_hx_request %}{% include "partials/_period_control.html" %}{% endif %}
+{% from "partials/_macros.html" import amount, category_row, currency_symbol %}
+<section
+    class="spending-workspace"
+    id="spending-workspace"
+    aria-labelledby="spending-title"
+>
+    {% set spending = dashboard.category_spending %}
+    <div class="workspace-heading">
+        <h2 id="spending-title">Spending Breakdown</h2>
+        <div class="flow-totals" aria-label="Income and expenses">
+            <span
+                >Income
+                <strong class="positive"
+                    >{{ amount(spending.total_income) if spending else '—'
+                    }}</strong
+                ></span
+            >
+            <span
+                >Expenses
+                <strong
+                    >{{ amount(spending.total_spending) if spending else '—'
+                    }}</strong
+                ></span
+            >
+        </div>
+    </div>
+    {% if spending and spending.categories %} {% set income_abs =
+    spending.total_income | abs %} {% set expense_abs = spending.total_spending
+    | abs %} {% set income_categories = spending.categories |
+    selectattr('is_income') | selectattr('total_amount', 'ne', 0) |
+    sort(attribute='total_amount', reverse=true) %} {% set expense_categories =
+    spending.categories | rejectattr('is_income') | selectattr('total_amount',
+    'ne', 0) | sort(attribute='total_amount', reverse=true) %}
+    <div class="flow-bands" aria-label="Income and expense activity">
+        <div class="flow-band flow-band--income">
+            <span class="flow-band__label">Income</span>
+            <span class="flow-band__track">
+                {% for cat in income_categories %} {% set pct =
+                ((cat.total_amount | abs / income_abs) * 100) | round if
+                income_abs else 0 %}
+                <span
+                    class="flow-band__segment flow-band__segment--{{ loop.index0 % 12 }}"
+                    style="width: {{ pct }}%"
+                >
+                    <span class="flow-band__tooltip"
+                        >{{ cat.category_name }} — {{ amount(cat.total_amount,
+                        cat.currency or 'USD') }} ({{ pct }}%)</span
+                    >
+                </span>
+                {% endfor %}
+            </span>
+        </div>
+        <div class="flow-band flow-band--expense">
+            <span class="flow-band__label">Expenses</span>
+            <span class="flow-band__track">
+                {% for cat in expense_categories %} {% set ci = loop.index0 +
+                income_categories | length %} {% set pct = ((cat.total_amount |
+                abs / expense_abs) * 100) | round if expense_abs else 0 %}
+                <span
+                    class="flow-band__segment flow-band__segment--{{ ci % 12 }}"
+                    style="width: {{ pct }}%"
+                >
+                    <span class="flow-band__tooltip"
+                        >{{ cat.category_name }} — {{ amount(cat.total_amount,
+                        cat.currency or 'USD') }} ({{ pct }}%)</span
+                    >
+                </span>
+                {% endfor %}
+            </span>
+        </div>
+    </div>
+    <div class="category-table">
+        <div class="category-table__columns" aria-hidden="true">
+            <span></span><span></span><span>Actual</span><span>Share</span>
+        </div>
+        <div class="category-explorer" data-category-explorer>
+            {% set income_categories = spending.categories |
+            selectattr('is_income') | selectattr('transaction_count') |
+            sort(attribute='total_amount', reverse=true) %} {% set
+            expense_categories = spending.categories | rejectattr('is_income') |
+            selectattr('transaction_count') | sort(attribute='total_amount',
+            reverse=true) %} {% if income_categories %}
+            <section class="category-section">
+                <h3 class="category-section__heading">Income</h3>
+                {% for category in income_categories %}{{ category_row(category,
+                spending.total_income or 1, loop.index0) }}{% endfor %}
+            </section>
+            {% endif %} {% if expense_categories %}
+            <section class="category-section">
+                <h3 class="category-section__heading">Expenses</h3>
+                {% for category in expense_categories %}{{
+                category_row(category, spending.total_spending or 1, loop.index0
+                + income_categories | length) }}{% endfor %}
+            </section>
+            {% endif %}
+        </div>
+    </div>
+    {% if chart_data %}
+    <script id="chart-data" type="application/json">
+        {{ chart_data | safe }}
+    </script>
+    {% endif %} {% else %}
+    <div class="empty-state empty-state--workspace">
+        <span class="empty-state__mark" aria-hidden="true">◎</span>
+        <p>No categorized activity yet.</p>
+        <span>Your next sync will give this dashboard some shape.</span>
+    </div>
+    {% endif %}
+</section>

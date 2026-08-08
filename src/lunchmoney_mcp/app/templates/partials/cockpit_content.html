@@ -1,0 +1,525 @@
+{% from "partials/_macros.html" import amount, currency_symbol, category_row
+with context -%} {% if is_hx_request %} {% include
+"partials/_period_control.html" %}
+<div id="header-status" hx-swap-oob="true" class="header-status">
+    <span class="live-dot" aria-hidden="true"></span>
+    {% if dashboard.transaction_last_synced_at %}
+    <time
+        class="js-time-ago"
+        data-prefix="Data synced"
+        datetime="{{ dashboard.transaction_last_synced_at.isoformat() }}"
+        title="{{ dashboard.transaction_last_synced_at.strftime('%b %d, %Y %H:%M:%S UTC') }}"
+        >Data synced {{ dashboard.transaction_last_synced_at | time_ago }}</time
+    >
+    {% else %}
+    <span>Awaiting sync</span>
+    {% endif %}
+</div>
+{% endif %} {%- set spending = dashboard.category_spending -%} {%- set accounts
+= dashboard.accounts -%} {%- set all_accounts = accounts.plaid_accounts +
+accounts.manual_accounts if accounts else [] -%} {%- set visible_accounts =
+all_accounts | selectattr('to_base') | list -%} {%- set account_total =
+namespace(value=0) -%} {%- for account in all_accounts -%} {%- if account.type
+in ['credit', 'loan'] -%} {%- set account_total.value = account_total.value -
+(account.to_base | abs) -%} {%- else -%} {%- set account_total.value =
+account_total.value + account.to_base -%} {%- endif -%} {%- endfor -%} {%- set
+net_income = spending.total_income - spending.total_spending if spending else 0
+-%} {%- set savings_rate = ((net_income / spending.total_income) * 100) if
+spending and spending.total_income else none -%} {% if
+dashboard.unavailable_sections %}
+<section
+    class="dashboard-alert"
+    role="status"
+    aria-labelledby="availability-title"
+>
+    <strong id="availability-title">Partial data</strong>
+    <span
+        >{{ dashboard.unavailable_sections | join(', ') }} will return on the
+        next refresh.</span
+    >
+</section>
+{% endif %}
+
+<aside
+    class="left-rail"
+    id="left-rail"
+    aria-label="Financial overview"
+    data-active-tab="accounts"
+>
+    <div
+        class="panel-switcher"
+        id="panel-switcher"
+        role="tablist"
+        aria-label="Overview panel"
+    >
+        <button
+            class="panel-switcher__button"
+            type="button"
+            role="tab"
+            aria-controls="accounts-panel"
+            id="accounts-tab"
+            onclick="setLeftRailTab('accounts')"
+        >
+            Accounts
+        </button>
+        <button
+            class="panel-switcher__button"
+            type="button"
+            role="tab"
+            aria-controls="summary-panel"
+            id="summary-tab"
+            onclick="setLeftRailTab('summary')"
+        >
+            Period
+        </button>
+        <button
+            class="panel-switcher__button"
+            type="button"
+            role="tab"
+            aria-controls="activity-panel"
+            id="activity-tab"
+            onclick="setLeftRailTab('activity')"
+        >
+            Activity
+        </button>
+        <button
+            class="panel-switcher__button"
+            type="button"
+            role="tab"
+            aria-controls="sync-panel"
+            id="sync-tab"
+            onclick="setLeftRailTab('sync')"
+        >
+            Sync
+        </button>
+    </div>
+
+    <section
+        class="rail-panel"
+        id="accounts-panel"
+        role="tabpanel"
+        aria-labelledby="accounts-tab"
+    >
+        <div class="panel-title">
+            <h2>Accounts overview</h2>
+            <span>{{ visible_accounts | length }}</span>
+        </div>
+        {% if visible_accounts %} {% set cash_types = ['cash', 'depository',
+        'checking', 'savings', 'prepaid', 'paypal'] %} {% set invest_types =
+        ['investment', 'brokerage', 'crypto', '401k', 'ira', 'roth_ira',
+        'pension'] %} {% set credit_types = ['credit', 'credit_card', 'loan',
+        'mortgage', 'student_loan', 'auto_loan'] %} {% set cash_accs =
+        visible_accounts | selectattr('type', 'in', cash_types) |
+        sort(attribute='to_base', reverse=true) | list %} {% set invest_accs =
+        visible_accounts | selectattr('type', 'in', invest_types) |
+        sort(attribute='to_base', reverse=true) | list %} {% set credit_accs =
+        visible_accounts | selectattr('type', 'in', credit_types) |
+        sort(attribute='to_base', reverse=true) | list %} {% set known_types =
+        cash_types + invest_types + credit_types %} {% set other_accs =
+        visible_accounts | rejectattr('type', 'in', known_types) |
+        sort(attribute='to_base', reverse=true) | list %} {% set account_groups
+        = [ ('Cash', cash_accs), ('Investment', invest_accs), ('Credit',
+        credit_accs), ('Other', other_accs)] %}
+        <div class="account-tree" id="account-tree">
+            {% for group_name, grouped_accounts in account_groups %} {% if
+            grouped_accounts %} {% set group_total = grouped_accounts |
+            map(attribute='to_base') | sum %}
+            <details
+                class="account-group"
+                id="acc-group-{{ group_name | lower }}"
+                open
+            >
+                <summary>
+                    <span
+                        >{{ group_name }} ({{ grouped_accounts | length
+                        }})</span
+                    >
+                    <strong
+                        >{{ amount(group_total, grouped_accounts[0].currency)
+                        }}</strong
+                    >
+                </summary>
+                <ul>
+                    {% for account in grouped_accounts %}
+                    <li id="account-item-{{ account.id }}">
+                        <span class="account-name"
+                            >{{ account.display_name or account.name }}</span
+                        >
+                        <strong
+                            >{{ amount(account.balance, account.currency)
+                            }}</strong
+                        >
+                    </li>
+                    {% endfor %}
+                </ul>
+            </details>
+            {% endif %} {% endfor %}
+        </div>
+        <div class="net-worth">
+            <span class="net-worth__label">Net Worth</span>
+            <strong
+                >{{ amount(account_total.value, all_accounts[0].currency)
+                }}</strong
+            >
+        </div>
+        {% else %}
+        <div class="empty-state empty-state--rail">
+            <p>No cached accounts yet.</p>
+            <span>Run a sync to see account balances.</span>
+        </div>
+        {% endif %}
+    </section>
+
+    <section
+        class="rail-panel"
+        id="summary-panel"
+        role="tabpanel"
+        aria-labelledby="summary-tab"
+    >
+        <div class="panel-title">
+            <h2>Period summary</h2>
+            <span>Live</span>
+        </div>
+        {% if spending %}
+        <dl class="period-summary" id="period-summary">
+            <div class="period-summary__section">
+                <dt>Income</dt>
+                <dd></dd>
+            </div>
+            <div>
+                <dt>Total income</dt>
+                <dd class="positive">{{ amount(spending.total_income) }}</dd>
+            </div>
+            <div class="period-summary__section">
+                <dt>Expenses</dt>
+                <dd></dd>
+            </div>
+            <div>
+                <dt>Total expenses</dt>
+                <dd>{{ amount(spending.total_spending) }}</dd>
+            </div>
+            <div>
+                <dt>Net income</dt>
+                <dd
+                    class="{% if net_income >= 0 %}positive{% else %}negative{% endif %}"
+                >
+                    {{ amount(net_income) }}
+                </dd>
+            </div>
+            <div>
+                <dt>Savings rate</dt>
+                <dd class="positive">
+                    {% if savings_rate is not none %}{{ "%.1f" |
+                    format(savings_rate) }}%{% else %}—{% endif %}
+                </dd>
+            </div>
+        </dl>
+        {% else %}
+        <div class="empty-state empty-state--rail">
+            <p>Period data is unavailable.</p>
+            <span>Sync transactions to calculate your flow.</span>
+        </div>
+        {% endif %}
+        <div class="budget-status">
+            <span>Budget</span>
+            {% if dashboard.budget_summary %}<strong
+                >{% if dashboard.budget_summary.aligned %}Aligned{% else %}In
+                progress{% endif %}</strong
+            >
+            {% else %}<strong>Unavailable</strong>{% endif %}
+        </div>
+    </section>
+
+    <section
+        class="rail-panel"
+        id="activity-panel"
+        role="tabpanel"
+        aria-labelledby="activity-tab"
+    >
+        <div class="panel-title">
+            <h2>Recent activity</h2>
+            <span
+                >{{ dashboard.transactions | length if dashboard.transactions
+                else 0 }}</span
+            >
+        </div>
+        {% if dashboard.transactions %}
+        <ul class="activity-list" id="activity-list">
+            {% for transaction in dashboard.transactions %}
+            <li id="tx-item-{{ transaction.id }}">
+                <span
+                    ><strong>{{ transaction.payee }}</strong
+                    ><small
+                        >{{ transaction.var_date.strftime('%b %d') }}</small
+                    ></span
+                >
+                <b
+                    class="{% if transaction.amount | float >= 0 %}positive{% else %}negative{% endif %}"
+                    >{{ amount(transaction.amount) }}</b
+                >
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state empty-state--rail">
+            <p>Your ledger is quiet.</p>
+            <span>Recent activity will appear after a sync.</span>
+        </div>
+        {% endif %}
+        <div class="sync-status">
+            <span>Last scheduled sync</span
+            ><strong
+                >{% if dashboard.scheduled_sync %}{{
+                dashboard.scheduled_sync.status | capitalize }}{% else %}Not yet
+                run{% endif %}</strong
+            >
+        </div>
+    </section>
+
+    <section
+        class="rail-panel"
+        id="sync-panel"
+        role="tabpanel"
+        aria-labelledby="sync-tab"
+    >
+        <div
+            class="panel-title"
+            style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            "
+        >
+            <h2>Syncing status</h2>
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+                {% if dashboard.sync_status and
+                dashboard.sync_status.scheduled_sync %}
+                <span
+                    class="status-badge status-badge--{{ dashboard.sync_status.scheduled_sync.status }}"
+                >
+                    {{ dashboard.sync_status.scheduled_sync.status | capitalize
+                    }}
+                </span>
+                {% else %}
+                <span class="status-badge status-badge--idle">Ready</span>
+                {% endif %}
+                <button
+                    id="sync-now-btn"
+                    class="btn btn-sm btn-outline"
+                    type="button"
+                    style="
+                        position: relative;
+                        overflow: hidden;
+                        margin: 0;
+                        padding: 0.25rem 0.6rem;
+                        font-size: 0.75rem;
+                    "
+                    hx-post="/dashboard/sync"
+                    hx-target="#dashboard-content"
+                    hx-swap="morph:innerHTML show:none"
+                >
+                    Sync Now
+                </button>
+            </div>
+        </div>
+        {% if dashboard.sync_status %}
+        <dl class="period-summary sync-summary">
+            <div class="period-summary__section">
+                <dt>Engine & Storage</dt>
+                <dd></dd>
+            </div>
+            <div>
+                <dt>Persistence mode</dt>
+                <dd>
+                    <span class="sync-badge sync-badge--mode"
+                        >{{ dashboard.sync_status.persistence_mode }}</span
+                    >
+                </dd>
+            </div>
+            <div>
+                <dt>Database URL</dt>
+                <dd>
+                    <code
+                        class="sync-code"
+                        title="{{ dashboard.sync_status.db_url }}"
+                        >{{ dashboard.sync_status.db_url }}</code
+                    >
+                </dd>
+            </div>
+            <div>
+                <dt>Scheduler engine</dt>
+                <dd>
+                    {% if dashboard.sync_status.embed_scheduler %}
+                    <span class="sync-badge">Embedded</span>
+                    {% else %}
+                    <span class="sync-badge">External</span>
+                    {% endif %}
+                </dd>
+            </div>
+
+            <div class="period-summary__section">
+                <dt>Local DB Inventory</dt>
+                <dd></dd>
+            </div>
+            <div>
+                <dt>Transactions</dt>
+                <dd>
+                    <strong
+                        >{{
+                        "{:,}".format(dashboard.sync_status.stored_transactions)
+                        }}</strong
+                    >
+                </dd>
+            </div>
+            <div>
+                <dt>Categories</dt>
+                <dd>
+                    <strong
+                        >{{
+                        "{:,}".format(dashboard.sync_status.stored_categories)
+                        }}</strong
+                    >
+                </dd>
+            </div>
+            <div>
+                <dt>Accounts</dt>
+                <dd>
+                    <strong
+                        >{{ "{:,}".format(dashboard.sync_status.stored_accounts)
+                        }}</strong
+                    >
+                </dd>
+            </div>
+            <div>
+                <dt>Tags</dt>
+                <dd>
+                    <strong
+                        >{{ "{:,}".format(dashboard.sync_status.stored_tags)
+                        }}</strong
+                    >
+                </dd>
+            </div>
+
+            <div class="period-summary__section">
+                <dt>Transactions Workload</dt>
+                <dd></dd>
+            </div>
+            <div>
+                <dt>Schedule</dt>
+                <dd>
+                    {% if dashboard.sync_status.transaction_cron %}
+                    <code class="sync-code"
+                        >{{ dashboard.sync_status.transaction_cron }}</code
+                    >
+                    <span class="sync-tz"
+                        >({{ dashboard.sync_status.transaction_timezone or
+                        dashboard.sync_status.schedule_timezone }})</span
+                    >
+                    {% else %}
+                    <span class="text-muted">Disabled</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div>
+                <dt>Last Sync</dt>
+                <dd>
+                    {% if dashboard.sync_status.transaction_last_synced_at or
+                    dashboard.sync_status.last_synced_at %}
+                    <time
+                        class="js-time-ago"
+                        datetime="{{ (dashboard.sync_status.transaction_last_synced_at or dashboard.sync_status.last_synced_at).isoformat() }}"
+                        title="{{ (dashboard.sync_status.transaction_last_synced_at or dashboard.sync_status.last_synced_at).strftime('%b %d, %Y %H:%M:%S UTC') }}"
+                    >
+                        {{ (dashboard.sync_status.transaction_last_synced_at or
+                        dashboard.sync_status.last_synced_at) | time_ago }}
+                    </time>
+                    {% else %}
+                    <span class="text-muted">Not yet synced</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div>
+                <dt>Next Sync</dt>
+                <dd>
+                    {% if dashboard.sync_status.transaction_next_sync_at %}
+                    <time
+                        class="js-local-time"
+                        datetime="{{ dashboard.sync_status.transaction_next_sync_at.isoformat() }}"
+                        title="{{ dashboard.sync_status.transaction_next_sync_at.strftime('%b %d, %Y %H:%M:%S UTC') }}"
+                    >
+                        {{
+                        dashboard.sync_status.transaction_next_sync_at.strftime('%b
+                        %d, %H:%M UTC') }}
+                    </time>
+                    {% else %}
+                    <span class="text-muted">Unknown</span>
+                    {% endif %}
+                </dd>
+            </div>
+
+            <div class="period-summary__section">
+                <dt>Metadata Workload</dt>
+                <dd></dd>
+            </div>
+            <div>
+                <dt>Schedule</dt>
+                <dd>
+                    {% if dashboard.sync_status.metadata_cron %}
+                    <code class="sync-code"
+                        >{{ dashboard.sync_status.metadata_cron }}</code
+                    >
+                    <span class="sync-tz"
+                        >({{ dashboard.sync_status.metadata_timezone or
+                        dashboard.sync_status.schedule_timezone }})</span
+                    >
+                    {% else %}
+                    <span class="text-muted">Disabled</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div>
+                <dt>Last Sync</dt>
+                <dd>
+                    {% if dashboard.sync_status.metadata_last_synced_at or
+                    dashboard.sync_status.last_synced_at %}
+                    <time
+                        class="js-time-ago"
+                        datetime="{{ (dashboard.sync_status.metadata_last_synced_at or dashboard.sync_status.last_synced_at).isoformat() }}"
+                        title="{{ (dashboard.sync_status.metadata_last_synced_at or dashboard.sync_status.last_synced_at).strftime('%b %d, %Y %H:%M:%S UTC') }}"
+                    >
+                        {{ (dashboard.sync_status.metadata_last_synced_at or
+                        dashboard.sync_status.last_synced_at) | time_ago }}
+                    </time>
+                    {% else %}
+                    <span class="text-muted">Not yet synced</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div>
+                <dt>Next Sync</dt>
+                <dd>
+                    {% if dashboard.sync_status.metadata_next_sync_at %}
+                    <time
+                        class="js-local-time"
+                        datetime="{{ dashboard.sync_status.metadata_next_sync_at.isoformat() }}"
+                        title="{{ dashboard.sync_status.metadata_next_sync_at.strftime('%b %d, %Y %H:%M:%S UTC') }}"
+                    >
+                        {{
+                        dashboard.sync_status.metadata_next_sync_at.strftime('%b
+                        %d, %H:%M UTC') }}
+                    </time>
+                    {% else %}
+                    <span class="text-muted">Unknown</span>
+                    {% endif %}
+                </dd>
+            </div>
+        </dl>
+        {% else %}
+        <div class="empty-state empty-state--rail">
+            <p>Sync status unavailable.</p>
+        </div>
+        {% endif %}
+    </section>
+</aside>
+
+{% include "partials/_spending_workspace.html" %}

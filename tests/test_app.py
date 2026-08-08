@@ -475,7 +475,10 @@ async def test_explicit_sync_initializes_and_persists_to_stateless_database(
     monkeypatch.setenv("STATELESS", "true")
     monkeypatch.delenv("LUNCHMONEY_DATABASE_URL", raising=False)
     get_settings.cache_clear()
+    from lunchmoney_mcp.client import LunchableData
+
     client = AsyncMock(spec=LunchMoneyApp)
+    client.data = LunchableData()
     client.refresh.side_effect = refresh
     client.refresh_transactions.return_value = {}
 
@@ -647,3 +650,39 @@ def test_stateless_startup_syncs_and_persists_without_manual_schema_setup(
     finally:
         get_settings.cache_clear()
         get_database.cache_clear()
+
+
+def test_openapi_docs_served_at_api_docs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Expose OpenAPI documentation at /api/docs, /api/redoc, and /api/openapi.json without auth."""
+    from starlette.testclient import TestClient
+    from lunchmoney_mcp.app import auth as auth_module
+
+    monkeypatch.setattr(
+        auth_module,
+        "get_secret_settings",
+        lambda: SimpleNamespace(mcp_api_key="secret-key"),
+    )
+    with TestClient(fastapi_app, base_url="http://localhost") as client:
+        docs = client.get("/api/docs")
+        redoc = client.get("/api/redoc")
+        openapi = client.get("/api/openapi.json")
+
+    assert docs.status_code == 200
+    assert redoc.status_code == 200
+    assert openapi.status_code == 200
+    assert "SwaggerUIBundle" in docs.text
+    assert "redoc" in redoc.text.lower()
+    assert openapi.json()["info"]["title"] == "Lunch Money MCP"
+
+
+def test_html_responses_disable_browser_caching() -> None:
+    """Attach no-cache headers to HTML responses to prevent stale browser renders."""
+    from starlette.testclient import TestClient
+
+    with TestClient(fastapi_app, base_url="http://localhost") as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-cache, no-store, must-revalidate"
+    assert response.headers["Pragma"] == "no-cache"
+    assert response.headers["Expires"] == "0"

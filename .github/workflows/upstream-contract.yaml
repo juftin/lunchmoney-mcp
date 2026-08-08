@@ -3,27 +3,27 @@
 name: upstream-contract
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
+    pull_request:
+    push:
+        branches:
+            - main
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  contract:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v9.0.0
-        with:
-          enable-cache: true
-      - name: Set up Task
-        uses: go-task/setup-task@v2
-      - name: Install dependencies
-        run: task install -- --locked
-      - name: Run upstream contract checks
-        run: task contract
+    contract:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v7
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v9.0.0
+              with:
+                  enable-cache: true
+            - name: Set up Task
+              uses: go-task/setup-task@v2
+            - name: Install dependencies
+              run: task install -- --locked
+            - name: Run upstream contract checks
+              run: task contract

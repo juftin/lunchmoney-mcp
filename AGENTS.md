@@ -65,29 +65,29 @@ For every Lunch Money domain (e.g. `categories`, `transactions`, `accounts`, `us
 ### Architectural Principles
 
 1. **Service Layer Isolation**:
-   - All business logic, DB queries, API calls, and domain rollups MUST reside in `src/lunchmoney_mcp/services/`.
-   - FastAPI routers (`src/lunchmoney_mcp/app/routers/`) and FastMCP tools (`src/lunchmoney_mcp/mcp/tools/`) MUST be clean 1-to-2 line delegators calling service functions.
+    - All business logic, DB queries, API calls, and domain rollups MUST reside in `src/lunchmoney_mcp/services/`.
+    - FastAPI routers (`src/lunchmoney_mcp/app/routers/`) and FastMCP tools (`src/lunchmoney_mcp/mcp/tools/`) MUST be clean 1-to-2 line delegators calling service functions.
 
 2. **Modular MCP Tool Organization**:
-   - FastMCP tools MUST be defined in dedicated domain files under `src/lunchmoney_mcp/mcp/tools/` and imported into `src/lunchmoney_mcp/mcp/server.py`.
-   - FastMCP tools and FastAPI routers delegate directly to clean service functions in `src/lunchmoney_mcp/services/`.
+    - FastMCP tools MUST be defined in dedicated domain files under `src/lunchmoney_mcp/mcp/tools/` and imported into `src/lunchmoney_mcp/mcp/server.py`.
+    - FastMCP tools and FastAPI routers delegate directly to clean service functions in `src/lunchmoney_mcp/services/`.
 
 3. **Upstream-First Write-Back Strategy**:
-   - All write operations (create/update/delete) MUST call the Lunch Money v2 API first.
-   - Upon receiving the canonical API response object, convert it to a SQLModel record (`Model.from_api()`) and execute `await db.upsert()` or `await db.delete()`.
+    - All write operations (create/update/delete) MUST call the Lunch Money v2 API first.
+    - Upon receiving the canonical API response object, convert it to a SQLModel record (`Model.from_api()`) and execute `await db.upsert()` or `await db.delete()`.
 
 4. **Dual Persistence Modes**:
-   - **Persistent Mode (Default)**: Uses SQLite file (`lunchmoney.db`) or PostgreSQL URL (`LUNCHMONEY_DATABASE_URL`).
-   - **Stateless Mode (`STATELESS=true`)**: Uses shared in-memory SQLite (`sqlite+aiosqlite:///file:memdb?mode=memory&cache=shared&uri=true`) with `StaticPool` and live API refresh per operation.
+    - **Persistent Mode (Default)**: Uses SQLite file (`lunchmoney.db`) or PostgreSQL URL (`LUNCHMONEY_DATABASE_URL`).
+    - **Stateless Mode (`STATELESS=true`)**: Uses shared in-memory SQLite (`sqlite+aiosqlite:///file:memdb?mode=memory&cache=shared&uri=true`) with `StaticPool` and live API refresh per operation.
 
 5. **Opt-In Incremental ETL**:
-   - Default sync (`incremental=False`) uses rolling date window (`days=30`).
-   - Incremental sync (`incremental=True`) queries `SyncMetadata` for domain watermarks with a safety overlap buffer (`LUNCHMONEY_SYNC_SAFETY_MARGIN_MINUTES`, default 5 mins).
+    - Default sync (`incremental=False`) uses rolling date window (`days=30`).
+    - Incremental sync (`incremental=True`) queries `SyncMetadata` for domain watermarks with a safety overlap buffer (`LUNCHMONEY_SYNC_SAFETY_MARGIN_MINUTES`, default 5 mins).
 
 6. **Distributed Locking & Zero-Infrastructure Fallback**:
-   - Migration and synchronization operations MUST acquire a distributed lock (`get_migration_lock()`) to guarantee single-worker execution across multi-container environments.
-   - When `REDIS_URL` is set, `RedisLock` is used for distributed coordination across instances.
-   - When `REDIS_URL` is omitted, the app gracefully falls back to local file-based `LockFile` (`.lunchmoney_*.lock`), requiring zero external infrastructure setup for desktop/CLI usage.
+    - Migration and synchronization operations MUST acquire a distributed lock (`get_migration_lock()`) to guarantee single-worker execution across multi-container environments.
+    - When `REDIS_URL` is set, `RedisLock` is used for distributed coordination across instances.
+    - When `REDIS_URL` is omitted, the app gracefully falls back to local file-based `LockFile` (`.lunchmoney_*.lock`), requiring zero external infrastructure setup for desktop/CLI usage.
 
 ---
 
@@ -96,11 +96,11 @@ For every Lunch Money domain (e.g. `categories`, `transactions`, `accounts`, `us
 When executing tasks that contain independent sub-components (e.g. implementing multiple read-only service functions, writing unit test files, or creating documentation pages):
 
 1. **Define Specialized Subagents (`define_subagent`)**:
-   - Create focused subagent types (e.g., `EndpointBuilder`, `TestWriter`, `DocUpdater`) with minimal required tool permissions.
+    - Create focused subagent types (e.g., `EndpointBuilder`, `TestWriter`, `DocUpdater`) with minimal required tool permissions.
 2. **Invoke Subagents Concurrently (`invoke_subagent`)**:
-   - Launch subagents with clear, explicit target file paths and acceptance criteria.
+    - Launch subagents with clear, explicit target file paths and acceptance criteria.
 3. **Reactive Execution (No Polling)**:
-   - Do NOT poll or check status in a loop. Stop tool execution or proceed with other work; the environment will automatically notify you when subagents finish.
+    - Do NOT poll or check status in a loop. Stop tool execution or proceed with other work; the environment will automatically notify you when subagents finish.
 
 ---
 

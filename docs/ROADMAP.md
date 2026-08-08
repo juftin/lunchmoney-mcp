@@ -310,18 +310,20 @@ features.
 
 ### Sprint 11: Server-Rendered Financial Dashboard
 
-- [ ] Add a small, authenticated HTML dashboard served by FastAPI, using
+- [x] Add a small, authenticated HTML dashboard served by FastAPI, using
       server-rendered templates and semantic HTML/CSS—no separate JavaScript
       application or client-side financial-data store. Scope the first release to
       one authenticated user and one Lunch Money account.
-- [ ] Start with dashboard cards for cache freshness, account summary,
+- [x] Start with dashboard cards for cache freshness, account summary,
       category spending, budget status, recent transactions, and the last scheduled
       sync outcome.
-- [ ] Reuse existing services and schemas; dashboard routes remain thin
+- [x] Reuse existing services and schemas; dashboard routes remain thin
       delegators and do not introduce duplicate analytics logic.
-- [ ] Ensure accessible keyboard navigation, responsive layouts, CSRF-safe
+- [x] Ensure accessible keyboard navigation, responsive layouts, CSRF-safe
       forms for any future mutations, and integration tests for authorization and
       rendered empty/error states.
+- [x] Establish Tabler as the locally served dashboard UI foundation, with a
+      custom financial visual system layered over server-rendered templates.
 
 ### Sprint 12: CLI, Packaging & Operator Experience
 

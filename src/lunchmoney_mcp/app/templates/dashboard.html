@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#252525" />
+        <title>Dashboard · Lunch Money</title>
+
+        <link
+            rel="stylesheet"
+            href="{{ url_for('dashboard_static', path='/vendor/pico/pico.min.css') }}"
+        />
+        <link
+            rel="stylesheet"
+            href="{{ url_for('dashboard_static', path='/dashboard.css') }}"
+        />
+        <script
+            defer
+            src="{{ url_for('dashboard_static', path='/vendor/htmx/htmx.min.js') }}"
+        ></script>
+        <script
+            defer
+            src="{{ url_for('dashboard_static', path='/dashboard.js') }}"
+        ></script>
+        <script
+            defer
+            src="{{ url_for('dashboard_static', path='/vendor/idiomorph/idiomorph-ext.min.js') }}"
+        ></script>
+        <script
+            defer
+            src="{{ url_for('dashboard_static', path='/vendor/frappe/frappe-charts.min.js') }}"
+        ></script>
+        <script
+            defer
+            src="{{ url_for('dashboard_static', path='/vendor/alpine/alpine.min.js') }}"
+        ></script>
+    </head>
+    <body x-data="dashboard" hx-ext="morph" @keydown.window="onKeydown">
+        <a class="skip-link" href="#dashboard-content"
+            >Skip to dashboard content</a
+        >
+
+        <div class="cockpit">
+            <header class="cockpit-header">
+                <a class="brand" href="/">
+                    <img
+                        class="brand-mascot"
+                        src="{{ url_for('dashboard_static', path='/mascot.png') }}"
+                        alt=""
+                    />
+                    <span>Lunch Money</span>
+                </a>
+                {% include "partials/_period_control.html" %}
+                <div class="header-right">
+                    <div id="header-status" class="header-status">
+                        <span class="live-dot" aria-hidden="true"></span>
+                        {% if dashboard.transaction_last_synced_at %}
+                        <time
+                            class="js-time-ago"
+                            data-prefix="Data synced"
+                            datetime="{{ dashboard.transaction_last_synced_at.isoformat() }}"
+                            title="{{ dashboard.transaction_last_synced_at.strftime('%b %d, %Y %H:%M:%S UTC') }}"
+                            >Data synced {{ dashboard.transaction_last_synced_at
+                            | time_ago }}</time
+                        >
+                        {% else %}
+                        <span>Awaiting sync</span>
+                        {% endif %}
+                    </div>
+                    <button
+                        id="dashboard-refresh-btn"
+                        class="header-refresh-btn"
+                        type="button"
+                        title="Refresh dashboard data"
+                        aria-label="Refresh data"
+                        hx-get="/{% if dashboard.period_start %}?period={{ dashboard.period_start.isoformat() }}{% endif %}"
+                        hx-target="#dashboard-content"
+                        hx-swap="morph:innerHTML show:none"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2.2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path
+                                d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"
+                            />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <main
+                id="dashboard-content"
+                class="cockpit-layout"
+                tabindex="-1"
+                hx-get="/{% if dashboard.period_start %}?period={{ dashboard.period_start.isoformat() }}{% endif %}"
+                hx-trigger="every 5m"
+                hx-target="#dashboard-content"
+                hx-swap="morph:innerHTML show:none"
+                hx-disinherit="*"
+            >
+                {% include "partials/cockpit_content.html" %}
+            </main>
+        </div>
+
+        <dialog
+            id="api-key-dialog"
+            x-show="showApiKeyDialog"
+            @click.outside="showApiKeyDialog = false"
+        >
+            <article>
+                <header>
+                    <p><strong>API Key Required</strong></p>
+                </header>
+                <p>Enter your Lunch Money API key to access the dashboard.</p>
+                <form @submit.prevent="submitApiKey()">
+                    <input
+                        type="password"
+                        x-model="apiKeyInput"
+                        placeholder="Paste your API key…"
+                        autocomplete="off"
+                    />
+                    <footer>
+                        <button type="submit">Connect</button>
+                    </footer>
+                </form>
+            </article>
+        </dialog>
+
+        <div
+            class="toast-container"
+            x-data
+            x-show="$store.toasts?.length"
+            x-transition
+        >
+            <template x-for="toast in $store.toasts" :key="toast.id">
+                <div class="toast" :class="'toast--' + toast.type">
+                    <span x-text="toast.message"></span>
+                    <button
+                        @click="$store.dismissToast(toast.id)"
+                        aria-label="Dismiss"
+                    >
+                        &times;
+                    </button>
+                </div>
+            </template>
+        </div>
+    </body>
+</html>

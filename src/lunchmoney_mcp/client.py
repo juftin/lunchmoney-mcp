@@ -14,10 +14,12 @@ from typing import Any, Callable, ClassVar, NamedTuple, TypeVar, overload
 import lunchmoney
 from lunchmoney import GetAllTransactions200Response
 from lunchmoney.models import (
+    BudgetSettingsResponseObject,
     CategoryObject,
     ChildCategoryObject,
     ManualAccountObject,
     PlaidAccountObject,
+    SummaryResponseObject,
     TagObject,
     TransactionObject,
     UserObject,
@@ -95,6 +97,12 @@ class LunchableData:
     """Tags"""
     user: UserObject | None = None
     """User"""
+    budget_settings: BudgetSettingsResponseObject | None = None
+    """Budget Settings"""
+    summaries: dict[tuple[Any, ...], SummaryResponseObject] = field(
+        default_factory=dict
+    )
+    """Budget Summaries keyed by query arguments"""
 
     def clear(self) -> None:
         """
@@ -106,6 +114,8 @@ class LunchableData:
         self.manual_accounts.clear()
         self.tags.clear()
         self.user = None
+        self.budget_settings = None
+        self.summaries.clear()
 
     @property
     def category_map(self) -> dict[int, CategoryObject | ChildCategoryObject]:

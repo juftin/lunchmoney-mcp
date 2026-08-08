@@ -1,0 +1,84 @@
+{%- macro amount(value, currency="USD") -%}{{ currency_symbol(currency) }}{{
+"{:,.2f}".format(value | float | abs) }}{%- endmacro -%} {%- macro
+currency_symbol(currency) -%} {%- set code = currency | upper if currency else
+'USD' -%} {%- if code == 'USD' -%}$ {%- elif code == 'CAD' -%}CA$ {%- elif code
+== 'AUD' -%}A$ {%- elif code == 'NZD' -%}NZ$ {%- elif code == 'EUR' -%}€ {%-
+elif code == 'GBP' -%}£ {%- elif code == 'JPY' -%}¥ {%- else -%}{{ code }}{%-
+endif -%} {%- endmacro -%} {%- macro category_row(category, category_total,
+swatch_index) -%} {%- set children = category.children |
+selectattr('transaction_count') | sort(attribute='total_amount', reverse=true)
+-%} {%- set section_total = category_total | abs -%} {%- set percent =
+((category.total_amount | abs / section_total) * 100) | round -%} {%- if
+children -%}
+<details
+    open
+    class="category-item category-item--group category-item--tone-{{ swatch_index % 12 }}"
+>
+    <summary>
+        <span class="category-name"
+            ><i class="category-disclosure" aria-hidden="true"></i
+            ><i
+                class="category-swatch category-swatch--{{ swatch_index % 12 }}"
+                aria-hidden="true"
+            ></i
+            ><span class="category-name__label"
+                >{{ category.category_name }}</span
+            ></span
+        >
+        <span class="category-meter"
+            ><span style="width: {{ [percent, 100] | min }}%"></span
+        ></span>
+        <strong
+            >{{ amount(category.total_amount, category.currency or 'USD')
+            }}</strong
+        ><em>{{ percent }}%</em>
+    </summary>
+    <ul class="category-children">
+        {%- for child in children -%} {%- set child_percent =
+        ((child.total_amount | abs / section_total) * 100) | round -%}
+        <li class="category-child">
+            <span
+                class="category-name category-name--child category-child__name"
+                ><i
+                    class="category-swatch category-swatch--child category-swatch--{{ swatch_index % 6 }}"
+                    aria-hidden="true"
+                ></i
+                ><span class="category-name__label"
+                    >{{ child.category_name }}</span
+                ></span
+            >
+            <span
+                class="category-meter category-meter--child category-child__meter"
+                aria-hidden="true"
+                ><span style="width: {{ [child_percent, 100] | min }}%"></span
+            ></span>
+            <strong
+                >{{ amount(child.total_amount, child.currency or
+                category.currency or 'USD') }}</strong
+            ><em>{{ child_percent }}%</em>
+        </li>
+        {%- endfor -%}
+    </ul>
+</details>
+{%- else -%}
+<div class="category-item category-item--tone-{{ swatch_index % 6 }}">
+    <div class="category-item__row">
+        <span class="category-name"
+            ><i
+                class="category-swatch category-swatch--{{ swatch_index % 6 }}"
+                aria-hidden="true"
+            ></i
+            ><span class="category-name__label"
+                >{{ category.category_name }}</span
+            ></span
+        >
+        <span class="category-meter"
+            ><span style="width: {{ [percent, 100] | min }}%"></span
+        ></span>
+        <strong
+            >{{ amount(category.total_amount, category.currency or 'USD')
+            }}</strong
+        ><em>{{ percent }}%</em>
+    </div>
+</div>
+{%- endif -%} {%- endmacro -%}

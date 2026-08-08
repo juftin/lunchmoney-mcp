@@ -1,108 +1,109 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: lunchmoney-mcp
-    ports:
-      - "127.0.0.1:8000:8000"
-    environment:
-      ENVIRONMENT: production
-      LUNCHMONEY_DATABASE_URL: ${LUNCHMONEY_DATABASE_URL:?Set LUNCHMONEY_DATABASE_URL}
-      LUNCHMONEY_REDIS_URL: redis://redis:6379/0
-      LUNCHMONEY_ACCESS_TOKEN: ${LUNCHMONEY_ACCESS_TOKEN:?Set LUNCHMONEY_ACCESS_TOKEN}
-      LUNCHMONEY_MCP_API_KEY: ${LUNCHMONEY_MCP_API_KEY:?Set LUNCHMONEY_MCP_API_KEY}
-      LUNCHMONEY_TRUSTED_PROXY_IPS: ${LUNCHMONEY_TRUSTED_PROXY_IPS:-}
-      LUNCHMONEY_ALLOWED_HOSTS: ${LUNCHMONEY_ALLOWED_HOSTS:-localhost,127.0.0.1}
-      LUNCHMONEY_CORS_ALLOWED_ORIGINS: ${LUNCHMONEY_CORS_ALLOWED_ORIGINS:-}
-      LUNCHMONEY_MAX_REQUEST_BODY_BYTES: ${LUNCHMONEY_MAX_REQUEST_BODY_BYTES:-1048576}
-      LUNCHMONEY_REQUEST_TIMEOUT_SECONDS: ${LUNCHMONEY_REQUEST_TIMEOUT_SECONDS:-30}
-      LUNCHMONEY_MAX_CONCURRENT_REQUESTS: ${LUNCHMONEY_MAX_CONCURRENT_REQUESTS:-100}
-      LUNCHMONEY_RATE_LIMIT_REQUESTS: ${LUNCHMONEY_RATE_LIMIT_REQUESTS:-120}
-      LUNCHMONEY_RATE_LIMIT_WINDOW_SECONDS: ${LUNCHMONEY_RATE_LIMIT_WINDOW_SECONDS:-60}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp:mode=1777,noexec,nosuid,size=64m
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - >-
-          import os, urllib.request; request = urllib.request.Request("http://127.0.0.1:8000/health",
-          headers={"X-API-Key": os.environ["LUNCHMONEY_MCP_API_KEY"]}); urllib.request.urlopen(request,
-          timeout=3).read()
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: lunchmoney-mcp
+        ports:
+            - "127.0.0.1:8000:8000"
+        environment:
+            ENVIRONMENT: production
+            LUNCHMONEY_DATABASE_URL: ${LUNCHMONEY_DATABASE_URL:?Set LUNCHMONEY_DATABASE_URL}
+            LUNCHMONEY_REDIS_URL: redis://redis:6379/0
+            LUNCHMONEY_ACCESS_TOKEN: ${LUNCHMONEY_ACCESS_TOKEN:?Set LUNCHMONEY_ACCESS_TOKEN}
+            LUNCHMONEY_MCP_API_KEY: ${LUNCHMONEY_MCP_API_KEY:?Set LUNCHMONEY_MCP_API_KEY}
+            LUNCHMONEY_TRUSTED_PROXY_IPS: ${LUNCHMONEY_TRUSTED_PROXY_IPS:-}
+            LUNCHMONEY_ALLOWED_HOSTS: ${LUNCHMONEY_ALLOWED_HOSTS:-localhost,127.0.0.1}
+            LUNCHMONEY_CORS_ALLOWED_ORIGINS: ${LUNCHMONEY_CORS_ALLOWED_ORIGINS:-}
+            LUNCHMONEY_MAX_REQUEST_BODY_BYTES: ${LUNCHMONEY_MAX_REQUEST_BODY_BYTES:-1048576}
+            LUNCHMONEY_REQUEST_TIMEOUT_SECONDS: ${LUNCHMONEY_REQUEST_TIMEOUT_SECONDS:-30}
+            LUNCHMONEY_MAX_CONCURRENT_REQUESTS: ${LUNCHMONEY_MAX_CONCURRENT_REQUESTS:-100}
+            LUNCHMONEY_RATE_LIMIT_REQUESTS: ${LUNCHMONEY_RATE_LIMIT_REQUESTS:-120}
+            LUNCHMONEY_RATE_LIMIT_WINDOW_SECONDS: ${LUNCHMONEY_RATE_LIMIT_WINDOW_SECONDS:-60}
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        restart: unless-stopped
+        read_only: true
+        tmpfs:
+            - /tmp:mode=1777,noexec,nosuid,size=64m
+        security_opt:
+            - no-new-privileges:true
+        cap_drop:
+            - ALL
+        healthcheck:
+            test:
+                - CMD
+                - python
+                - -c
+                - >-
+                    import os, urllib.request; request = urllib.request.Request("http://127.0.0.1:8000/health",
+                    headers={"X-API-Key": os.environ["LUNCHMONEY_MCP_API_KEY"]}); urllib.request.urlopen(request,
+                    timeout=3).read()
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
 
-  scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: lunchmoney-scheduler
-    command: ["lunchmoney-mcp", "schedule"]
-    profiles: ["scheduler"]
-    environment:
-      ENVIRONMENT: production
-      LUNCHMONEY_DATABASE_URL: ${LUNCHMONEY_DATABASE_URL:?Set LUNCHMONEY_DATABASE_URL}
-      LUNCHMONEY_REDIS_URL: redis://redis:6379/0
-      LUNCHMONEY_ACCESS_TOKEN: ${LUNCHMONEY_ACCESS_TOKEN:?Set LUNCHMONEY_ACCESS_TOKEN}
-      LUNCHMONEY_SCHEDULE_CRON: ${LUNCHMONEY_SCHEDULE_CRON:-0 * * * *}
-      LUNCHMONEY_SCHEDULE_TIMEZONE: ${LUNCHMONEY_SCHEDULE_TIMEZONE:-UTC}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp:mode=1777,noexec,nosuid,size=64m
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
+    scheduler:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: lunchmoney-scheduler
+        command: ["lunchmoney-mcp", "schedule"]
+        profiles: ["scheduler"]
+        environment:
+            ENVIRONMENT: production
+            LUNCHMONEY_DATABASE_URL: ${LUNCHMONEY_DATABASE_URL:?Set LUNCHMONEY_DATABASE_URL}
+            LUNCHMONEY_REDIS_URL: redis://redis:6379/0
+            LUNCHMONEY_ACCESS_TOKEN: ${LUNCHMONEY_ACCESS_TOKEN:?Set LUNCHMONEY_ACCESS_TOKEN}
+            LUNCHMONEY_SCHEDULE_CRON: ${LUNCHMONEY_SCHEDULE_CRON:-0 * * * *}
+            LUNCHMONEY_SCHEDULE_TIMEZONE: ${LUNCHMONEY_SCHEDULE_TIMEZONE:-UTC}
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        restart: unless-stopped
+        read_only: true
+        tmpfs:
+            - /tmp:mode=1777,noexec,nosuid,size=64m
+        security_opt:
+            - no-new-privileges:true
+        cap_drop:
+            - ALL
 
-  postgres:
-    image: postgres:17-alpine
-    container_name: lunchmoney-postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-lunchmoney}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+    postgres:
+        image: postgres:17-alpine
+        container_name: lunchmoney-postgres
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+            POSTGRES_DB: ${POSTGRES_DB:-lunchmoney}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test:
+                ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
-    container_name: lunchmoney-redis
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+    redis:
+        image: redis:7-alpine
+        container_name: lunchmoney-redis
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
+    postgres_data:
+    redis_data:

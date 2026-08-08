@@ -162,8 +162,20 @@ class SyncCliSettings(StatelessSettings, RuntimeSettingsBase):
 class ScheduleSettings(BaseModel):
     """Non-secret settings controlling periodic synchronization."""
 
-    schedule_cron: str = Field(
-        default="0 * * * *",
+    schedule_transactions_cron: str | None = Field(
+        default=None,
+        description="Cron expression used for transaction database synchronization",
+    )
+    """Cron expression used for transaction database synchronization."""
+
+    schedule_metadata_cron: str | None = Field(
+        default=None,
+        description="Cron expression used for metadata database synchronization",
+    )
+    """Cron expression used for metadata database synchronization."""
+
+    schedule_cron: str | None = Field(
+        default=None,
         description="Cron expression used by the opt-in scheduler process",
     )
     """Cron expression used by the opt-in scheduler process."""

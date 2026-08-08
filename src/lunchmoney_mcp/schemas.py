@@ -113,6 +113,8 @@ class AccountInfo(BaseModel):
     """Unique account identifier."""
     name: str
     """Account display name."""
+    display_name: str | None = None
+    """Optional user-facing account name, preferred when present."""
     balance: float
     """Current account balance."""
     currency: str
@@ -333,6 +335,58 @@ class ScheduledSyncStatus(BaseModel):
     """Safe operator-facing explanation for a failed or skipped run."""
     synced: SyncDetails | None = None
     """Record counts returned by a successful synchronization, when available."""
+
+
+class SyncStatusSummary(BaseModel):
+    """Synchronization status and engine environment metadata for dashboard display."""
+
+    persistence_mode: str
+    """Data persistence mode (e.g. Persistent (SQLite), Stateless (In-Memory))."""
+    db_driver: str = "sqlite+aiosqlite"
+    """Database driver / dialect name (e.g. sqlite+aiosqlite)."""
+    db_url: str = "sqlite+aiosqlite:///:memory:"
+    """Sanitized database connection URL with credentials masked."""
+    stored_transactions: int = 0
+    """Total transaction records persisted in local database."""
+    stored_categories: int = 0
+    """Total category records persisted in local database."""
+    stored_accounts: int = 0
+    """Total account records (Plaid + manual) persisted in local database."""
+    stored_tags: int = 0
+    """Total tag records persisted in local database."""
+
+    # Workload 1: Transactions Database Sync
+    transaction_cron: str | None = None
+    """Cron expression for transaction database sync."""
+    transaction_timezone: str | None = None
+    """Timezone for transaction sync schedule."""
+    transaction_last_synced_at: datetime.datetime | None = None
+    """Watermark timestamp for transaction sync."""
+    transaction_next_sync_at: datetime.datetime | None = None
+    """Calculated next transaction sync timestamp."""
+
+    # Workload 2: Metadata Database Sync (Accounts, Categories, Tags, User)
+    metadata_cron: str | None = None
+    """Cron expression for metadata database sync (Accounts, Categories, Tags, User)."""
+    metadata_timezone: str | None = None
+    """Timezone for metadata sync schedule."""
+    metadata_last_synced_at: datetime.datetime | None = None
+    """Watermark timestamp for metadata sync."""
+    metadata_next_sync_at: datetime.datetime | None = None
+    """Calculated next metadata sync timestamp."""
+
+    last_synced_at: datetime.datetime | None = None
+    """Most recent transaction watermark or completed sync timestamp."""
+    schedule_cron: str | None = None
+    """Configured cron expression for scheduled sync workloads."""
+    schedule_timezone: str | None = None
+    """Configured timezone for interpreting the sync cron expression."""
+    next_sync_at: datetime.datetime | None = None
+    """Calculated next scheduled synchronization timestamp."""
+    embed_scheduler: bool = False
+    """Whether local scheduler is embedded in the FastAPI application lifespan."""
+    scheduled_sync: ScheduledSyncStatus | None = None
+    """Latest recorded outcome of scheduled synchronization."""
 
 
 class ChildCategorySpending(BaseModel):

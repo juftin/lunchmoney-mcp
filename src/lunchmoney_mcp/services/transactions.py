@@ -6,7 +6,7 @@ from sqlalchemy.engine.result import ScalarResult
 from sqlmodel import col, select
 from sqlmodel.sql._expression_select_cls import SelectOfScalar
 
-from lunchmoney_mcp.database import LunchMoneyDatabase
+from lunchmoney_mcp.database import LunchMoneyDatabase, eager_options
 from lunchmoney.models import (
     ChildTransactionObject,
     CreateNewTransactionsRequest,
@@ -208,13 +208,40 @@ async def fetch_recent_transactions(
     db: LunchMoneyDatabase,
     days: int = 30,
     limit: int = 50,
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
 ) -> list[TransactionObject]:
-    """Return a bounded recent cached list for backwards-compatible callers."""
-    cutoff = datetime.date.today() - datetime.timedelta(days=days)
+    """Fetch bounded cached parent transactions within a reporting period.
+
+    Parameters
+    ----------
+    db : LunchMoneyDatabase
+        Database manager instance.
+    days : int
+        Number of days back from the resolved end date to include when
+        ``start_date`` is omitted. Default is 30.
+    limit : int
+        Maximum number of transactions to return. Default is 50.
+    start_date : datetime.date | None
+        Optional inclusive start date for a fixed reporting period.
+    end_date : datetime.date | None
+        Optional inclusive end date for a fixed reporting period. Defaults to today.
+
+    Returns
+    -------
+    list[TransactionObject]
+        Parent transactions ordered by date descending.
+    """
+    resolved_end = end_date or datetime.date.today()
+    cutoff = start_date or resolved_end - datetime.timedelta(days=days)
     async with db.session() as session:
         statement: SelectOfScalar[Transaction] = (
             select(Transaction)
-            .where(Transaction.var_date >= cutoff)
+            .options(*eager_options(Transaction))
+            .where(
+                Transaction.var_date >= cutoff,
+                Transaction.var_date <= resolved_end,
+            )
             .where(Transaction.kind == TransactionKind.PARENT)
             .order_by(col(Transaction.var_date).desc())
             .limit(limit)

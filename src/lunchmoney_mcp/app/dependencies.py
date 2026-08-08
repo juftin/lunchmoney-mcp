@@ -43,8 +43,9 @@ async def get_db_session(
         yield session
 
 
+@cache
 def get_lunchmoney_app() -> LunchMoneyApp:
-    """FastAPI dependency supplying an un-cached LunchMoneyApp client instance.
+    """FastAPI dependency supplying a cached LunchMoneyApp client instance.
 
     Returns
     -------

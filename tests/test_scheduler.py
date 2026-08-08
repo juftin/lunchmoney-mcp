@@ -82,7 +82,7 @@ def test_embedded_scheduler_starts_inside_local_fastapi_process(
     started = scheduler_module.start_embedded_scheduler(settings=RuntimeSettings())
 
     assert started is scheduler
-    scheduler.add_job.assert_called_once()
+    assert scheduler.add_job.call_count == 2
     scheduler.start.assert_called_once()
 
 
@@ -123,7 +123,7 @@ def test_embedded_scheduler_rejects_nonlocal_or_multiworker_runtime(
 async def test_schedule_process_coalesces_and_replaces_its_job(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Register one coalesced job and close it gracefully after shutdown."""
+    """Register coalesced jobs for transactions and metadata workloads and close gracefully."""
     import lunchmoney_mcp.scheduler as scheduler_module
 
     scheduler = _SchedulerDouble()
@@ -140,14 +140,13 @@ async def test_schedule_process_coalesces_and_replaces_its_job(
         shutdown_event=shutdown_event,
     )
 
-    scheduler.add_job.assert_called_once()
-    call = scheduler.add_job.call_args
-    assert call is not None
-    assert call.args[0] is scheduler_module.run_scheduled_sync
-    assert call.kwargs["id"] == scheduler_module.SCHEDULE_ID
-    assert call.kwargs["coalesce"] is True
-    assert call.kwargs["max_instances"] == 1
-    assert call.kwargs["replace_existing"] is True
+    assert scheduler.add_job.call_count == 2
+    calls = scheduler.add_job.call_args_list
+    assert calls[0].kwargs["id"] == scheduler_module.SCHEDULE_TRANSACTIONS_ID
+    assert calls[1].kwargs["id"] == scheduler_module.SCHEDULE_METADATA_ID
+    assert calls[0].kwargs["coalesce"] is True
+    assert calls[0].kwargs["max_instances"] == 1
+    assert calls[0].kwargs["replace_existing"] is True
     scheduler.start.assert_called_once()
     scheduler.pause.assert_called_once()
     scheduler.shutdown.assert_called_once_with(wait=False)

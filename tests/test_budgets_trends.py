@@ -19,7 +19,7 @@ from lunchmoney.models import (
 )
 
 from lunchmoney_mcp.app.main import fastapi_app
-from lunchmoney_mcp.client import LunchMoneyApp
+from lunchmoney_mcp.client import LunchableData, LunchMoneyApp
 from lunchmoney_mcp.database import LunchMoneyDatabase, run_migrations
 from lunchmoney_mcp.database.models import Category, Transaction
 from lunchmoney_mcp.mcp import mcp
@@ -88,13 +88,14 @@ async def test_budget_settings_service_forwards_to_lunch_money_client() -> None:
     client = cast(
         LunchMoneyApp,
         SimpleNamespace(
+            data=LunchableData(),
             client=SimpleNamespace(
                 budgets=SimpleNamespace(get_budget_settings=get_budget_settings)
-            )
+            ),
         ),
     )
 
-    result = await fetch_budget_settings(client=client)
+    result = await fetch_budget_settings(client=client, force_refresh=True)
 
     assert result == settings
     get_budget_settings.assert_awaited_once_with()
@@ -110,12 +111,13 @@ async def test_budget_mutation_services_forward_to_lunch_money_client() -> None:
     client = cast(
         LunchMoneyApp,
         SimpleNamespace(
+            data=LunchableData(),
             client=SimpleNamespace(
                 budgets=SimpleNamespace(
                     upsert_budget=upsert_budget,
                     delete_budget=delete_budget,
                 )
-            )
+            ),
         ),
     )
 

@@ -4,6 +4,7 @@ from lunchmoney_mcp.database.backend import (
     DEFAULT_DATABASE_URL,
     IN_MEMORY_DATABASE_URL,
     LunchMoneyDatabase,
+    eager_options,
     resolve_database_url,
     run_migrations,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "TransactionKind",
     "TransactionTagLink",
     "User",
+    "eager_options",
     "resolve_database_url",
     "run_migrations",
 ]

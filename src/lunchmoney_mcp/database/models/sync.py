@@ -22,6 +22,11 @@ class SyncMetadata(SQLModel, table=True):
     """Synchronization domain uniquely identified by this watermark."""
     last_synced_at: datetime = Field(sa_type=cast(builtin_type[Any], UTCDateTime()))
     """UTC timestamp of the domain's latest successful synchronization."""
+    payload: dict[str, Any] | None = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+    )
+    """Optional domain metadata payload persisted during synchronization."""
 
     def model_post_init(self, context: Any, /) -> None:
         """Normalize synchronization watermarks after SQLModel construction."""
